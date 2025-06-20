@@ -136,7 +136,7 @@ impl FIGfont {
         Ok(())
     }
 
-    fn extract_codetag_font_code(lines: &[&str], index: usize) -> Result<u32, String> {
+    fn extract_codetag_font_code(lines: &[&str], index: usize) -> Result<Option<u32>, String> {
         let line = lines
             .get(index)
             .ok_or_else(|| "get codetag line error".to_string())?;
@@ -154,11 +154,14 @@ impl FIGfont {
             u32::from_str_radix(s, 16)
         } else if let Some(s) = code.strip_prefix('0') {
             u32::from_str_radix(s, 8)
+        } else if code.starts_with('-') {
+            // human readable translation table
+            return Ok(None);
         } else {
             code.parse()
         };
 
-        code.map_err(|e| format!("{e:?}"))
+        code.map_err(|e| format!("{e:?}")).map(Some)
     }
 
     fn read_codetag_font(
@@ -182,7 +185,9 @@ impl FIGfont {
                 break;
             }
 
-            let code = FIGfont::extract_codetag_font_code(lines, start_index)?;
+            let Some(code) = FIGfont::extract_codetag_font_code(lines, start_index)? else {
+                continue;
+            };
             let font = FIGfont::extract_one_font(
                 lines,
                 code,
